@@ -1,0 +1,14 @@
+sshServer:
+  host: 192.168.1.1
+  port: 22
+  username: root
+  password: 12345678
+forwards:
+  - name: mysql
+    remoteTargetHost: 127.0.0.1
+    remoteTargetPort: 3306
+    localBindingPort: 3306
+  - name: redis
+    remoteTargetHost: 127.0.0.1
+    remoteTargetPort: 6379
+    localBindingPort: 6379

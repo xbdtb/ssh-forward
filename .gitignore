@@ -1,0 +1,5 @@
+dist/
+.idea
+bin/
+config/config.yml
+.sshforwardrc
