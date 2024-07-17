@@ -35,7 +35,7 @@ type SshForward struct {
 
 func (self *SshForward) Start(config Config) {
 	for {
-		log.Printf("开始连接 SSH 服务器\n")
+		log.Printf("开始连接SSH服务器\n")
 		sshConfig := &ssh.ClientConfig{
 			User: config.SshServer.Username,
 			Auth: []ssh.AuthMethod{
@@ -47,11 +47,11 @@ func (self *SshForward) Start(config Config) {
 
 		sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", config.SshServer.Host, config.SshServer.Port), sshConfig)
 		if err != nil {
-			log.Printf("SSH 服务器连接失败: %v\n", err)
+			log.Printf("SSH服务器连接失败: %v\n", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		log.Printf("SSH 服务器连接成功\n")
+		log.Printf("SSH服务器连接成功\n")
 
 		signal := make(chan struct{})
 		var once sync.Once
@@ -60,7 +60,7 @@ func (self *SshForward) Start(config Config) {
 			for {
 				session, err := sshClient.NewSession()
 				if err != nil {
-					log.Println("SSH 服务器连接已断开:", err)
+					log.Println("SSH服务器连接已断开:", err)
 					once.Do(func() {
 						_ = sshClient.Close()
 						close(signal)
@@ -70,7 +70,7 @@ func (self *SshForward) Start(config Config) {
 				err = session.Run("echo")
 				if err != nil {
 					_ = session.Close()
-					log.Println("SSH 服务器连接已断开:", err)
+					log.Println("SSH服务器连接已断开:", err)
 					once.Do(func() {
 						_ = sshClient.Close()
 						close(signal)
@@ -117,7 +117,7 @@ func (self *SshForward) ForwardLoop(forward Forward, ch <-chan struct{}) {
 			go func() {
 				sshConn, err := self.sshClient.Dial("tcp", fmt.Sprintf("%s:%d", forward.RemoteTargetHost, forward.RemoteTargetPort))
 				if err != nil {
-					log.Printf("%s 无法建立 SSH 连接 %s:%d: %v\n", forward.Name, forward.RemoteTargetHost, forward.RemoteTargetPort, err)
+					log.Printf("%s 无法建立SSH连接 %s:%d: %v\n", forward.Name, forward.RemoteTargetHost, forward.RemoteTargetPort, err)
 					return
 				}
 				defer sshConn.Close()
