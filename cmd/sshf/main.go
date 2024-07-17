@@ -35,7 +35,7 @@ type SshForward struct {
 
 func (self *SshForward) Start(config Config) {
 	for {
-		log.Printf("开始连接SSH服务器\n")
+		log.Printf("开始连接 SSH 服务器\n")
 		sshConfig := &ssh.ClientConfig{
 			User: config.SshServer.Username,
 			Auth: []ssh.AuthMethod{
@@ -47,11 +47,11 @@ func (self *SshForward) Start(config Config) {
 
 		sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", config.SshServer.Host, config.SshServer.Port), sshConfig)
 		if err != nil {
-			log.Printf("SSH服务器连接失败: %v\n", err)
+			log.Printf("SSH 服务器连接失败: %v\n", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		log.Printf("SSH服务器连接成功\n")
+		log.Printf("SSH 服务器连接成功\n")
 
 		signal := make(chan struct{})
 		var once sync.Once
@@ -60,7 +60,7 @@ func (self *SshForward) Start(config Config) {
 			for {
 				session, err := sshClient.NewSession()
 				if err != nil {
-					log.Println("SSH服务器连接已断开:", err)
+					log.Println("SSH 服务器连接已断开:", err)
 					once.Do(func() {
 						_ = sshClient.Close()
 						close(signal)
@@ -70,7 +70,7 @@ func (self *SshForward) Start(config Config) {
 				err = session.Run("echo")
 				if err != nil {
 					_ = session.Close()
-					log.Println("SSH服务器连接已断开:", err)
+					log.Println("SSH 服务器连接已断开:", err)
 					once.Do(func() {
 						_ = sshClient.Close()
 						close(signal)
@@ -117,7 +117,7 @@ func (self *SshForward) ForwardLoop(forward Forward, ch <-chan struct{}) {
 			go func() {
 				sshConn, err := self.sshClient.Dial("tcp", fmt.Sprintf("%s:%d", forward.RemoteTargetHost, forward.RemoteTargetPort))
 				if err != nil {
-					log.Printf("%s 无法建立SSH连接 %s:%d: %v\n", forward.Name, forward.RemoteTargetHost, forward.RemoteTargetPort, err)
+					log.Printf("%s 无法建立 SSH 连接 %s:%d: %v\n", forward.Name, forward.RemoteTargetHost, forward.RemoteTargetPort, err)
 					return
 				}
 				defer sshConn.Close()
@@ -126,10 +126,7 @@ func (self *SshForward) ForwardLoop(forward Forward, ch <-chan struct{}) {
 
 				// 从远程复制到本地
 				go func() {
-					_, err = io.Copy(localConn, sshConn)
-					if err != nil {
-						//log.Printf("%s Failed to copy from remote to local: %v", forward.Name, err)
-					}
+					_, _ = io.Copy(localConn, sshConn)
 					done <- true
 				}()
 
@@ -146,89 +143,6 @@ func (self *SshForward) ForwardLoop(forward Forward, ch <-chan struct{}) {
 	}()
 }
 
-func createForward(sshClient *ssh.Client, forward Forward) {
-	// 监听本地端口
-	localListener, err := net.Listen("tcp", fmt.Sprintf(":%d", forward.LocalBindingPort))
-	if err != nil {
-		log.Printf("%s Failed to listen on local port: %v", forward.Name, err)
-	}
-
-	log.Printf("%s 监听成功", forward.Name)
-
-	go func() {
-		defer localListener.Close()
-		for {
-			// 接受本地连接并启动端口转发
-			localConn, err := localListener.Accept()
-			if err != nil {
-				log.Printf("%s Failed to accept local connection: %v", forward.Name, err)
-				continue
-			}
-			log.Println(forward.Name, "new connection")
-
-			go func() {
-				defer localConn.Close()
-
-				// 建立SSH通道
-				sshConn, err := sshClient.Dial("tcp", fmt.Sprintf("%s:%d", forward.RemoteTargetHost, forward.RemoteTargetPort))
-				if err != nil {
-					log.Printf("%s Failed to establish SSH connection to %s:%d: %v", forward.Name, forward.RemoteTargetHost, forward.RemoteTargetPort, err)
-					return
-				}
-				defer sshConn.Close()
-
-				done := make(chan bool)
-
-				// 从远程复制到本地
-				go func() {
-					_, err = io.Copy(localConn, sshConn)
-					if err != nil {
-						//log.Printf("%s Failed to copy from remote to local: %v", forward.Name, err)
-					}
-					done <- true
-				}()
-
-				// 从本地复制到远程
-				go func() {
-					_, err = io.Copy(sshConn, localConn)
-					if err != nil {
-						//log.Printf("%s Failed to copy from local to remote: %v", forward.Name, err)
-					}
-					done <- true
-				}()
-
-				<-done
-				log.Println(forward.Name, "end connection")
-			}()
-		}
-	}()
-}
-
-func createForwards(config Config) {
-	// 创建SSH客户端配置
-	sshConfig := &ssh.ClientConfig{
-		User: config.SshServer.Username,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(config.SshServer.Password),
-		},
-		Timeout:         5 * time.Second,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	// 连接SSH服务器
-	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", config.SshServer.Host, config.SshServer.Port), sshConfig)
-	if err != nil {
-		log.Fatalf("Failed to connect to SSH server: %v", err)
-	}
-	defer sshClient.Close()
-
-	for _, forward := range config.Forwards {
-		createForward(sshClient, forward)
-	}
-
-	sshClient.Wait()
-}
-
 func main() {
 	log.Println(os.Args)
 	configFile, err := os.ReadFile(".sshforwardrc")
@@ -240,8 +154,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("无法解析配置文件: %v", err)
 	}
-	//createForwards(config)
-	//select {}
 	sshForward := SshForward{}
 	sshForward.Start(config)
 }
